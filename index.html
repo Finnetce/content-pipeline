@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ContentBot">
+<meta name="theme-color" content="#0c1220">
+<title>Content Pipeline</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0c1220;
+    --surface: #111827;
+    --surface-2: #1a2236;
+    --accent: #3b9eff;
+    --accent-dim: rgba(59,158,255,0.12);
+    --text-1: #f0f4fa;
+    --text-2: #8896ab;
+    --text-3: #3d4b63;
+    --border: rgba(59,158,255,0.1);
+    --success: #34d399;
+    --error: #fb7185;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+    color: var(--text-1);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .header {
+    padding: 20px 24px 0;
+    flex-shrink: 0;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .logo-icon svg { width: 18px; height: 18px; }
+
+  .logo-text {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  .logo-text span { color: var(--accent); }
+
+  .subtitle {
+    font-size: 13px;
+    color: var(--text-2);
+    padding-left: 42px;
+  }
+
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    gap: 16px;
+  }
+
+  .input-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+  }
+
+  .input-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-3);
+  }
+
+  .prompt-input {
+    flex: 1;
+    min-height: 120px;
+    max-height: 300px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    color: var(--text-1);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .prompt-input::placeholder {
+    color: var(--text-3);
+  }
+
+  .prompt-input:focus {
+    border-color: rgba(59,158,255,0.4);
+  }
+
+  .options {
+    display: flex;
+    gap: 8px;
+  }
+
+  .option-btn {
+    flex: 1;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-2);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+
+  .option-btn.active {
+    background: var(--accent-dim);
+    border-color: rgba(59,158,255,0.3);
+    color: var(--accent);
+  }
+
+  .option-btn:hover {
+    border-color: rgba(59,158,255,0.25);
+  }
+
+  .send-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--accent);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .send-btn:hover { background: #2b8bef; }
+  .send-btn:active { transform: scale(0.98); }
+
+  .send-btn:disabled {
+    background: var(--surface-2);
+    color: var(--text-3);
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .send-btn.loading {
+    background: var(--surface-2);
+    color: var(--text-2);
+  }
+
+  .send-btn.success {
+    background: rgba(52,211,153,0.15);
+    color: var(--success);
+  }
+
+  .send-btn.error {
+    background: rgba(251,113,133,0.15);
+    color: var(--error);
+  }
+
+  /* Status bar */
+  .status {
+    padding: 0 24px 20px;
+    flex-shrink: 0;
+  }
+
+  .status-inner {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: none;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .status-inner.visible { display: flex; }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 4px;
+    flex-shrink: 0;
+  }
+
+  .status-dot.pending { background: var(--accent); animation: pulse 1.5s infinite; }
+  .status-dot.done { background: var(--success); }
+  .status-dot.fail { background: var(--error); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .status-text {
+    font-size: 13px;
+    color: var(--text-2);
+    line-height: 1.4;
+  }
+
+  .status-text strong {
+    color: var(--text-1);
+    font-weight: 600;
+  }
+
+  /* History */
+  .history {
+    padding: 0 24px 24px;
+    flex-shrink: 0;
+  }
+
+  .history-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-3);
+    margin-bottom: 10px;
+  }
+
+  .history-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+
+  .history-item:hover { border-color: rgba(59,158,255,0.25); }
+
+  .history-prompt {
+    font-size: 13px;
+    color: var(--text-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 70%;
+  }
+
+  .history-time {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  .history-status {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-left: 8px;
+  }
+
+  /* Settings overlay */
+  .settings-toggle {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    width: 32px;
+    height: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-3);
+    transition: all 0.2s;
+  }
+
+  .settings-toggle:hover { color: var(--text-2); border-color: rgba(59,158,255,0.25); }
+
+  .settings-panel {
+    display: none;
+    padding: 0 24px 16px;
+  }
+
+  .settings-panel.visible { display: block; }
+
+  .settings-field {
+    margin-bottom: 12px;
+  }
+
+  .settings-field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-3);
+    margin-bottom: 6px;
+  }
+
+  .settings-field input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-1);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .settings-field input:focus { border-color: rgba(59,158,255,0.4); }
+  .settings-field input::placeholder { color: var(--text-3); }
+
+  .settings-save {
+    padding: 8px 16px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(59,158,255,0.3);
+    border-radius: 8px;
+    color: var(--accent);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .char-count {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-3);
+    text-align: right;
+  }
+
+  @media (min-width: 600px) {
+    body { align-items: center; justify-content: center; }
+    .app { width: 440px; max-height: 90vh; overflow-y: auto; }
+    .prompt-input { min-height: 140px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="login-screen" style="display:flex; align-items:center; justify-content:center; min-height:100vh; min-height:100dvh; padding:24px;">
+  <div style="width:100%; max-width:360px; text-align:center;">
+    <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:8px;">
+      <div style="width:40px; height:40px; background:var(--accent); border-radius:10px; display:flex; align-items:center; justify-content:center;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" width="22" height="22"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
+      </div>
+      <div style="font-size:20px; font-weight:700; color:var(--text-1); letter-spacing:-0.3px;">Content<span style="color:var(--accent);">Pipeline</span></div>
+    </div>
+    <div style="font-size:13px; color:var(--text-2); margin-bottom:32px;">Zugang nur mit Zugangscode</div>
+    <input type="password" id="login-pin" placeholder="Zugangscode eingeben"
+      style="width:100%; padding:14px 18px; background:var(--surface); border:1px solid var(--border); border-radius:10px; color:var(--text-1); font-family:'IBM Plex Sans',sans-serif; font-size:16px; text-align:center; letter-spacing:4px; outline:none; margin-bottom:12px;"
+      onkeydown="if(event.key==='Enter')checkLogin()">
+    <button onclick="checkLogin()"
+      style="width:100%; padding:14px; background:var(--accent); border:none; border-radius:10px; color:#fff; font-family:'IBM Plex Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer;">Einloggen</button>
+    <div id="login-error" style="font-size:13px; color:var(--error); margin-top:12px; display:none;">Falscher Zugangscode</div>
+  </div>
+</div>
+
+<!-- App (hidden until login) -->
+<div class="app" id="main-app" style="position:relative; display:none; flex-direction:column; flex:1; max-width:600px; width:100%;">
+
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round">
+          <path d="M12 5v14M5 12l7-7 7 7"/>
+        </svg>
+      </div>
+      <div class="logo-text">Content<span>Pipeline</span></div>
+    </div>
+    <div class="subtitle">LinkedIn-Post in 60 Sekunden</div>
+  </div>
+
+  <!-- Email Banner (visible only when no email set) -->
+  <div id="email-banner" style="margin:16px 24px 0;padding:14px 18px;background:rgba(59,158,255,0.08);border:1px solid rgba(59,158,255,0.2);border-radius:10px;display:none;cursor:pointer;" onclick="toggleSettings();document.getElementById('result-email').focus();">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--accent);">Email-Adresse eintragen</div>
+        <div style="font-size:12px;color:var(--text-2);margin-top:2px;">Dein LinkedIn-Post wird per Email zugestellt</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Button -->
+  <div class="settings-toggle" onclick="toggleSettings()" style="display:flex;align-items:center;gap:6px;position:absolute;top:20px;right:24px;padding:6px 12px;cursor:pointer;color:var(--text-3);background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:'IBM Plex Sans',sans-serif;transition:all 0.2s;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+    Settings
+  </div>
+
+  <div class="settings-panel" id="settings">
+    <div class="settings-field">
+      <label>Email f&uuml;r Ergebnis</label>
+      <input type="email" id="result-email" placeholder="deine@email.com" oninput="saveSettings();updateEmailBanner();">
+    </div>
+    <div class="settings-field" style="opacity:0.5;">
+      <label>Webhook (vorkonfiguriert)</label>
+      <input type="url" id="webhook-url" style="font-size:11px;" oninput="saveSettings()" readonly>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="input-group">
+      <div class="input-label">Prompt</div>
+      <textarea
+        class="prompt-input"
+        id="prompt"
+        placeholder="z.B. Die 10 gr&ouml;&szlig;ten ETFs in Europa nach Fondsvolumen&#10;&#10;oder: Warum passive Indexfonds aktive Fonds schlagen — mit aktuellen Zahlen"
+        oninput="updateCharCount()"
+      ></textarea>
+      <div class="char-count" id="charcount">0 Zeichen</div>
+    </div>
+
+    <div class="options">
+      <button class="option-btn active" data-format="auto" onclick="setFormat(this)">Auto</button>
+      <button class="option-btn" data-format="infographic" onclick="setFormat(this)">Infografik</button>
+      <button class="option-btn" data-format="hero_image" onclick="setFormat(this)">Hero-Bild</button>
+    </div>
+
+    <button class="send-btn" id="send-btn" onclick="sendPrompt()">
+      Post generieren
+    </button>
+  </div>
+
+  <div class="status">
+    <div class="status-inner" id="status">
+      <div class="status-dot" id="status-dot"></div>
+      <div class="status-text" id="status-text"></div>
+    </div>
+  </div>
+
+  <div class="history" id="history-section" style="display:none">
+    <div class="history-label">Letzte Prompts</div>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<script>
+  // --- ACCESS CODE ---
+  // Ändere diesen Code um den Zugangscode zu setzen:
+  const ACCESS_CODE = 'finanzen2026';
+
+  function checkLogin() {
+    const pin = document.getElementById('login-pin').value;
+    const err = document.getElementById('login-error');
+    if (pin === ACCESS_CODE) {
+      localStorage.setItem('cp_auth', 'true');
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('main-app').style.display = 'flex';
+      err.style.display = 'none';
+    } else {
+      err.style.display = 'block';
+      document.getElementById('login-pin').value = '';
+    }
+  }
+
+  // Auto-login if already authenticated
+  if (localStorage.getItem('cp_auth') === 'true') {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = 'flex';
+  }
+
+  // Logout function (accessible via console or add a button)
+  function logout() {
+    localStorage.removeItem('cp_auth');
+    location.reload();
+  }
+
+  let selectedFormat = 'auto';
+
+  // --- Default Webhook ---
+  const DEFAULT_WEBHOOK = 'https://hook.eu1.make.com/0tbut7ccefpomtasr2yobpv9h25sal8z';
+
+  // --- Settings ---
+  function loadSettings() {
+    const url = localStorage.getItem('cp_webhook_url') || DEFAULT_WEBHOOK;
+    const email = localStorage.getItem('cp_email') || '';
+    document.getElementById('webhook-url').value = url;
+    document.getElementById('result-email').value = email;
+    // Save default webhook if not set yet
+    if (!localStorage.getItem('cp_webhook_url')) {
+      localStorage.setItem('cp_webhook_url', DEFAULT_WEBHOOK);
+    }
+    updateEmailBanner();
+  }
+
+  function updateEmailBanner() {
+    const email = document.getElementById('result-email').value.trim();
+    const banner = document.getElementById('email-banner');
+    if (!email) {
+      banner.style.display = 'block';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+
+  function saveSettings() {
+    localStorage.setItem('cp_webhook_url', document.getElementById('webhook-url').value.trim());
+    localStorage.setItem('cp_email', document.getElementById('result-email').value.trim());
+  }
+
+  function toggleSettings() {
+    document.getElementById('settings').classList.toggle('visible');
+  }
+
+  // --- Format ---
+  function setFormat(el) {
+    document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    selectedFormat = el.dataset.format;
+  }
+
+  // --- Char count ---
+  function updateCharCount() {
+    const len = document.getElementById('prompt').value.length;
+    document.getElementById('charcount').textContent = len + ' Zeichen';
+  }
+
+  // --- History ---
+  function loadHistory() {
+    const hist = JSON.parse(localStorage.getItem('cp_history') || '[]');
+    const section = document.getElementById('history-section');
+    const list = document.getElementById('history-list');
+    if (hist.length === 0) { section.style.display = 'none'; return; }
+    section.style.display = 'block';
+    list.innerHTML = hist.slice(0, 5).map(h => {
+      const color = h.status === 'ok' ? 'var(--success)' : h.status === 'fail' ? 'var(--error)' : 'var(--accent)';
+      return '<div class="history-item" onclick="document.getElementById(\'prompt\').value=this.dataset.prompt;updateCharCount()" data-prompt="' +
+        h.prompt.replace(/"/g, '&quot;') + '">' +
+        '<div class="history-prompt">' + h.prompt.substring(0, 60) + '</div>' +
+        '<div style="display:flex;align-items:center">' +
+        '<div class="history-time">' + h.time + '</div>' +
+        '<div class="history-status" style="background:' + color + '"></div>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function addHistory(prompt, status) {
+    const hist = JSON.parse(localStorage.getItem('cp_history') || '[]');
+    const now = new Date();
+    const time = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+    hist.unshift({ prompt, status, time });
+    if (hist.length > 20) hist.length = 20;
+    localStorage.setItem('cp_history', JSON.stringify(hist));
+    loadHistory();
+  }
+
+  // --- Send ---
+  async function sendPrompt() {
+    const webhookUrl = localStorage.getItem('cp_webhook_url');
+    const email = localStorage.getItem('cp_email');
+    const prompt = document.getElementById('prompt').value.trim();
+    const btn = document.getElementById('send-btn');
+    const status = document.getElementById('status');
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+
+    if (!webhookUrl) {
+      toggleSettings();
+      document.getElementById('webhook-url').focus();
+      return;
+    }
+
+    if (!email) {
+      toggleSettings();
+      document.getElementById('result-email').focus();
+      return;
+    }
+
+    if (!prompt) {
+      document.getElementById('prompt').focus();
+      return;
+    }
+
+    // Loading state
+    btn.disabled = true;
+    btn.className = 'send-btn loading';
+    btn.textContent = 'Pipeline l\u00e4uft\u2026';
+    status.className = 'status-inner visible';
+    statusDot.className = 'status-dot pending';
+    statusText.innerHTML = '<strong>Gesendet.</strong> Research + Bildgenerierung + Copywriting l\u00e4uft. Ergebnis kommt per Email.';
+
+    try {
+      const res = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: prompt,
+          format_preference: selectedFormat,
+          email: email,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (res.ok) {
+        btn.className = 'send-btn success';
+        btn.textContent = 'Gesendet \u2713';
+        statusDot.className = 'status-dot done';
+        statusText.innerHTML = '<strong>Pipeline gestartet.</strong> Du bekommst das Ergebnis in 1\u20132 Min per Email an ' + email + '.';
+        addHistory(prompt, 'ok');
+        document.getElementById('prompt').value = '';
+        updateCharCount();
+      } else {
+        throw new Error('HTTP ' + res.status);
+      }
+    } catch (e) {
+      btn.className = 'send-btn error';
+      btn.textContent = 'Fehler \u2014 nochmal versuchen';
+      statusDot.className = 'status-dot fail';
+      statusText.innerHTML = '<strong>Fehler:</strong> ' + e.message + '. Pr\u00fcfe die Webhook-URL in den Settings.';
+      addHistory(prompt, 'fail');
+    }
+
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.className = 'send-btn';
+      btn.textContent = 'Post generieren';
+    }, 3000);
+  }
+
+  // --- Keyboard shortcut ---
+  document.getElementById('prompt').addEventListener('keydown', function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      sendPrompt();
+    }
+  });
+
+  // --- Init ---
+  loadSettings();
+  loadHistory();
+</script>
+
+</body>
+</html>
